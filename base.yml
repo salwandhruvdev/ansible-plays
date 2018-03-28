@@ -1,0 +1,50 @@
+---
+- hosts: cloud
+  user: ec2-user
+
+  tasks:
+
+     - name: Upgrade all packages on Amazon Linux
+       yum: name='*' state=latest
+       become: yes
+
+     - name: Add user bob without the ability to login
+       user: name=bob
+       become: yes
+
+     - name: Search for file named passwd everyday
+       cron: name="find passwd file" minute="0" hour="0" job="find ~ -name passwd"
+
+
+     - name: Create a directory called site80
+       file: path=/home/ec2-user/site_80 state=directory mode=0755
+
+     - name: Copy index file for site80
+       copy: src=./documents/site_80/index.html dest=/home/ec2-user/site_80/ mode=0644
+
+     - name: Create a directory called site81
+       file: path=/home/ec2-user/site_81 state=directory mode=0755
+
+     - name: Copy index file for site81
+       copy: src=./documents/site_81/index.html dest=/home/ec2-user/site_81/ mode=0644
+     
+     - name: Restart Nginx
+       service: name=nginx state=restarted
+
+  roles:
+   - role: jdauphant.nginx
+     become: yes
+     nginx_http_params:
+       - sendfile "on"
+       - access_log "/var/log/nginx/access.log"
+     nginx_sites:
+       port_80:
+         - listen 80
+         - server_name localhost
+         - root /home/ec2-user/site_80/
+         - location / { try_files $uri $uri/ /index.html; }
+       port_81:
+         - listen 81
+         - server_name another
+         - root /home/ec2-user/site_81/
+         - location / { try_files $uri $uri/ /index.html; }
